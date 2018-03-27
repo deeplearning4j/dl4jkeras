@@ -1,6 +1,8 @@
 from .java_classes import *
 import numpy as np
 import ctypes
+import inspect
+
 
 
 
@@ -403,8 +405,10 @@ class ndarray(object):
     def __getattr__(self, attr):
         import ops
         f = getattr(ops, attr)
-        setattr(ndarray, attr, f)
-        return getattr(self, attr)
+        if inspect.getargspec(f).args[0] == 'arr':
+            setattr(ndarray, attr, f)
+            return getattr(self, attr)
+        raise AttributeError(attr)
 
 
 def array(*args, **kwargs):
