@@ -2,9 +2,9 @@ from keras.backend.common import floatx, epsilon
 from keras.backend.common import image_data_format
 
 from ..java_classes import SameDiff, Nd4j
-from ..ndarray import array, get_context_dtype()
-from ..ndarray import zeros as nd4j_zeros
-from ..ndarray import ones as nd4j_ones
+from ..ndarray import array, get_context_dtype
+from ..matlib import zeros as nd4j_zeros
+from ..matlib import ones as nd4j_ones
 
 
 sd = SameDiff.create()
@@ -773,7 +773,7 @@ def batch_normalization(x, mean, var, beta, gamma, epsilon=1e-3):
 
 def concatenate(tensors, axis=-1):
     if axis < 0:
-        axis = += ndim(tensors[0])
+        axis += ndim(tensors[0])
     return sd.concat(axis, *tensors)
 
 
