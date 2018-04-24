@@ -6,7 +6,7 @@ from ..ndarray import array, get_context_dtype
 from ..matlib import zeros as nd4j_zeros
 from ..matlib import ones as nd4j_ones
 
-from .samediff import SDVariableWrapper
+from .samediff import SDVariableWrapper, op
 
 
 sd = SameDiff.create()
