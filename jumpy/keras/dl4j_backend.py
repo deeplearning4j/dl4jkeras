@@ -6,6 +6,8 @@ from ..ndarray import array, get_context_dtype
 from ..matlib import zeros as nd4j_zeros
 from ..matlib import ones as nd4j_ones
 
+from .samediff import SDVariableWrapper
+
 
 sd = SameDiff.create()
 
@@ -32,7 +34,7 @@ def placeholder(shape=None, ndim=None, dtype=None, sparse=False, name=None):
             shape = None
         else:
             shape = [None for _ in range(ndim)]
-    ph = sd.var(get_opname("placeholder"), _to_int_shape(shape))
+    ph = SDVariableWrapper(sd.var(get_opname("placeholder"), _to_int_shape(shape)))
     ph.placeholder = True
     ph._keras_shape = shape
     ph._uses_learning_phase = False
@@ -45,8 +47,8 @@ def is_placeholder(x):
 
 def variable(value, dtype=None, name=None, constraint=None):
     value = array(value).array  # INDArray
-    var = sd.var(get_opname("variable"), value)
-    var._keras_shape = var.shape()
+    var = SDVariableWrapper(sd.var(get_opname("variable"), value))
+    var._keras_shape = var.shape
     var._uses_learning_phase = False
     return var
 
@@ -106,17 +108,17 @@ def ones(shape, dtype=None, name=None):
 def eye(size, dtype=None, name=None):
     return variable(Nd4j.eye(size))
 
-
+@op
 def zeros_like(x, dtype=None, name=None):
     return sd.zerosLike(x)
 
-
+@op
 def ones_like(x, dtype=None, name=None):
     return sd.onesLike(x)
 
-
+@op
 def identity(x,name=None):
-    return x + 0
+    return x.add(0)
 
 
 def random_uniform_variable(shape, low, high, dtype=None,
@@ -140,7 +142,7 @@ def count_params(x):
         p *= i
     return p
 
-
+@op
 def update(x, new_x):
     """Update the value of `x` to `new_x`.
 
@@ -153,7 +155,7 @@ def update(x, new_x):
     """
     return sd.assign(x, new_x)
 
-
+@op
 def update_add(x, increment):
     """Update the value of `x` by adding `increment`.
 
@@ -166,7 +168,7 @@ def update_add(x, increment):
     """
     return x.addi(increment)
 
-
+@op
 def update_sub(x, decrement):
     """Update the value of `x` by subtracting `decrement`.
 
@@ -183,11 +185,11 @@ def update_sub(x, decrement):
 def moving_average_update(x, value, momentum):
     raise NotImplemented
 
-
+@op
 def dot(x, y):
     return sd.mmul(x, y)
 
-
+@op
 def batch_dot(x, y, axes=None):
     if isinstance(axes, int):
         axes = [[axis], [axis]]
@@ -197,11 +199,11 @@ def batch_dot(x, y, axes=None):
     axes = [[a] if type(a) is int else a for a in axes]
     return sd.tensorMmul(x, y, axes)
 
-
+@op
 def transpose(x):
     return sd.transpose(x)
 
-
+@op
 def gather(reference, indices):
     """Retrieves the elements of indices `indices` in the tensor `reference`.
 
@@ -217,7 +219,7 @@ def gather(reference, indices):
 
 # ELEMENT-WISE OPERATIONS
 
-
+@op
 def max(x, axis=None, keepdims=False):
     """Maximum value in a tensor.
 
@@ -242,7 +244,7 @@ def max(x, axis=None, keepdims=False):
         mx = sd.expandDims(mx, axis)
     return mx
 
-
+@op
 def min(x, axis=None, keepdims=False):
     """Minimum value in a tensor.
 
@@ -267,7 +269,7 @@ def min(x, axis=None, keepdims=False):
         mn = sd.expandDims(mn, axis)
     return mn
 
-
+@op
 def sum(x, axis=None, keepdims=False):
     """Sum of the values in a tensor, alongside the specified axis.
 
@@ -292,7 +294,7 @@ def sum(x, axis=None, keepdims=False):
         s = sd.expandDims(s, axis)
     return s
 
-
+@op
 def prod(x, axis=None, keepdims=False):
     """Multiplies the values in a tensor, alongside the specified axis.
 
@@ -318,7 +320,7 @@ def prod(x, axis=None, keepdims=False):
     return p
 
 
-
+@op
 def cumsum(x, axis=0):
     """Cumulative sum of the values in a tensor, alongside the specified axis.
 
@@ -331,7 +333,7 @@ def cumsum(x, axis=0):
     """
     return sd.cumsum(x, False, False, axis)
 
-
+@op
 def cumprod(x, axis=0):
     """Cumulative product of the values in a tensor, alongside the specified axis.
 
@@ -344,7 +346,7 @@ def cumprod(x, axis=0):
     """
     return sd.cumprod(x, False, False, axis)
 
-
+@op
 def var(x, axis=None, keepdims=False):
     """Variance of a tensor, alongside the specified axis.
 
@@ -369,7 +371,7 @@ def var(x, axis=None, keepdims=False):
         v = sd.expandDims(v, axis)
     return v
 
-
+@op
 def std(x, axis=None, keepdims=False):
     """Standard deviation of a tensor, alongside the specified axis.
 
@@ -393,7 +395,7 @@ def std(x, axis=None, keepdims=False):
         v = sd.expandDims(v, axis)
     return v
 
-
+@op
 def mean(x, axis=None, keepdims=False):
     """Mean of a tensor, alongside the specified axis.
 
@@ -418,7 +420,7 @@ def mean(x, axis=None, keepdims=False):
         m = sd.expandDims(m, axis)
     return m
 
-
+@op
 def any(x, axis=None, keepdims=False):
     """Bitwise reduction (logical OR).
 
@@ -432,7 +434,7 @@ def any(x, axis=None, keepdims=False):
     """
     raise NotImplemented
 
-
+@op
 def all(x, axis=None, keepdims=False):
     """Bitwise reduction (logical AND).
 
@@ -446,7 +448,7 @@ def all(x, axis=None, keepdims=False):
     """
     raise NotImplemented
 
-
+@op
 def argmax(x, axis=-1):
     """Returns the index of the maximum value along an axis.
 
@@ -461,7 +463,7 @@ def argmax(x, axis=-1):
         axis += ndim(x)
     return sd.argmax(x, axis)
 
-
+@op
 def argmin(x, axis=-1):
     """Returns the index of the minimum value along an axis.
 
@@ -476,7 +478,7 @@ def argmin(x, axis=-1):
         axis += ndim(x)
     return sd.argmax(x, axis)
 
-
+@op
 def square(x):
     """Element-wise square.
 
@@ -488,7 +490,7 @@ def square(x):
     """
     return sd.square(x)
 
-
+@op
 def abs(x):
     """Element-wise absolute value.
 
@@ -500,7 +502,7 @@ def abs(x):
     """
     return sd.abs(x)
 
-
+@op
 def sqrt(x):
     """Element-wise square root.
 
@@ -513,7 +515,7 @@ def sqrt(x):
     return sd.sqrt(x)
 
 
-
+@op
 def exp(x):
     """Element-wise exponential.
 
@@ -525,7 +527,7 @@ def exp(x):
     """
     return sd.exp(x)
 
-
+@op
 def log(x):
     """Element-wise log.
 
@@ -537,7 +539,7 @@ def log(x):
     """
     return sd.log(x)
 
-
+@op
 def logsumexp(x, axis=None, keepdims=False):
     """Computes log(sum(exp(elements across dimensions of a tensor))).
 
@@ -558,7 +560,7 @@ def logsumexp(x, axis=None, keepdims=False):
     """
     raise NotImplemented
 
-
+@op
 def round(x):
     """Element-wise rounding to the closest integer.
 
@@ -572,7 +574,7 @@ def round(x):
     """
     return sd.round(x)
 
-
+@op
 def sign(x):
     """Element-wise sign.
 
@@ -585,7 +587,7 @@ def sign(x):
     return sd.sign(x)
 
 
-
+@op
 def pow(x, a):
     """Element-wise exponentiation.
 
@@ -598,7 +600,7 @@ def pow(x, a):
     """
     return sd.pow(x, a)
 
-
+@op
 def clip(x, min_value, max_value):
     """Element-wise value clipping.
 
@@ -616,7 +618,7 @@ def clip(x, min_value, max_value):
         max_value = np.inf
     return sd.clipByValue(x, min_value, max_value)
 
-
+@op
 def equal(x, y):
     """Element-wise equality between two tensors.
 
@@ -629,7 +631,7 @@ def equal(x, y):
     """
     return sd.eq(x, y)
 
-
+@op
 def not_equal(x, y):
     """Element-wise inequality between two tensors.
 
@@ -642,7 +644,7 @@ def not_equal(x, y):
     """
     return sd.neq(x, y)
 
-
+@op
 def greater(x, y):
     """Element-wise truth value of (x > y).
 
@@ -655,7 +657,7 @@ def greater(x, y):
     """
     return sd.gt(x, y)
 
-
+@op
 def greater_equal(x, y):
     """Element-wise truth value of (x >= y).
 
@@ -668,7 +670,7 @@ def greater_equal(x, y):
     """
     return sd.gte(x, y)
 
-
+@op
 def less(x, y):
     """Element-wise truth value of (x < y).
 
@@ -681,7 +683,7 @@ def less(x, y):
     """
     return sd.lt(x, y)
 
-
+@op
 def less_equal(x, y):
     """Element-wise truth value of (x <= y).
 
@@ -694,7 +696,7 @@ def less_equal(x, y):
     """
     return sd.lte(x, y)
 
-
+@op
 def maximum(x, y):
     """Element-wise maximum of two tensors.
 
@@ -707,7 +709,7 @@ def maximum(x, y):
     """
     return sd.max(x, y)
 
-
+@op
 def minimum(x, y):
     """Element-wise minimum of two tensors.
 
@@ -720,7 +722,7 @@ def minimum(x, y):
     """
     return sd.min(x, y)
 
-
+@op
 def sin(x):
     """Computes sin of x element-wise.
 
@@ -732,7 +734,7 @@ def sin(x):
     """
     return sd.sin(x)
 
-
+@op
 def cos(x):
     """Computes cos of x element-wise.
 
@@ -744,13 +746,13 @@ def cos(x):
     """
     return sd.cos(x)
 
-
+@op
 def normalize_batch_in_training(x, gamma, beta,
                                 reduction_axes, epsilon=1e-3):
     raise NotImplemented
 
 
-
+@op
 def batch_normalization(x, mean, var, beta, gamma, epsilon=1e-3):
     """Applies batch normalization on x given mean, var, beta and gamma.
 
@@ -770,13 +772,13 @@ def batch_normalization(x, mean, var, beta, gamma, epsilon=1e-3):
     """
     return sd.batcNorm(x, mean, var, gamma, beta)
 
-
+@op
 def concatenate(tensors, axis=-1):
     if axis < 0:
         axis += ndim(tensors[0])
     return sd.concat(axis, *tensors)
 
-
+@op
 def reshape(x, shape):
     """Reshapes a tensor to the specified shape.
 
@@ -789,7 +791,7 @@ def reshape(x, shape):
     """
     return sd.reshape(x, *shape)
 
-
+@op
 def permute_dimensions(x, pattern):
     """Permutes axes in a tensor.
 
@@ -803,15 +805,15 @@ def permute_dimensions(x, pattern):
     """
     return sd.permute(x, *pattern)
 
-
+@op
 def resize_images(x, height_factor, width_factor, data_format):
     raise NotImplemented
 
-
+@op
 def resize_volumes(x, depth_factor, height_factor, width_factor, data_format):
     raise NotImplemented
 
-
+@op
 def repeat_elements(x, rep, axis):
     """Repeats the elements of a tensor along an axis, like `np.repeat`.
 
@@ -830,7 +832,7 @@ def repeat_elements(x, rep, axis):
         x = sd.repeat(x, axis)
     return x
 
-
+@op
 def repeat(x, n):
     """Repeats a 2D tensor.
 
@@ -850,7 +852,7 @@ def repeat(x, n):
     new_shape.insert(1, n)
     x = sd.reshape(x, *new_shape)
 
-
+@op
 def arange(start, stop=None, step=1, dtype='int32'):
     """Creates a 1D tensor containing a sequence of integers.
 
@@ -874,7 +876,7 @@ def arange(start, stop=None, step=1, dtype='int32'):
     raise NotImplemented
 
 
-
+@op
 def tile(x, n):
     """Creates a tensor by tiling `x` by `n`.
 
@@ -890,7 +892,7 @@ def tile(x, n):
         n = [n]
     return sd.tile(x, n)
 
-
+@op
 def flatten(x):
     """Flatten a tensor.
 
@@ -906,7 +908,7 @@ def flatten(x):
         vec_size *= i
     return sd.reshape(x, vec_size)
 
-
+@op
 def batch_flatten(x):
     s = int_shape(x)
     vec_size = 1
@@ -914,7 +916,7 @@ def batch_flatten(x):
         vec_size *= i
     return sd.reshape(x, -1, vec_size)
 
-
+@op
 def expand_dims(x, axis=-1):
     """Adds a 1-sized dimension at index "axis".
 
@@ -927,7 +929,7 @@ def expand_dims(x, axis=-1):
     """
     return sd.expandDims(x, axis)
 
-
+@op
 def squeeze(x, axis):
     """Removes a 1-dimension from the tensor at index "axis".
 
@@ -940,20 +942,20 @@ def squeeze(x, axis):
     """
     return sd.squeeze(x, axis)
 
-
+@op
 def temporal_padding(x, padding=(1, 1)):
     raise NotImplemented
 
 
-
+@op
 def spatial_2d_padding(x, padding=((1, 1), (1, 1)), data_format=None):
     raise NotImplemented
 
-
+@op
 def spatial_3d_padding(x, padding=((1, 1), (1, 1), (1, 1)), data_format=None):
     raise NotImplemented
 
-
+@op
 def stack(x, axis=0):
     """Stacks a list of rank `R` tensors into a rank `R+1` tensor.
 
@@ -967,7 +969,7 @@ def stack(x, axis=0):
     return tf.stack(x, axis)
 
 
-
+@op
 def one_hot(indices, num_classes):
     """Computes the one-hot representation of an integer tensor.
 
@@ -983,7 +985,7 @@ def one_hot(indices, num_classes):
     return sd.oneHot(indices, depth=num_classes)
 
 
-
+@op
 def reverse(x, axes):
     """Reverse a tensor along the specified axes.
 
@@ -998,6 +1000,9 @@ def reverse(x, axes):
     if isinstance(axes, int):
         axes = [axes]
     return tf.reverse(x, *axes)
+
+
+###-----------NO OPS BEYOND THIS LINE---------------###
 
 
 def function(inputs, outputs, updates=None, **kwargs):
