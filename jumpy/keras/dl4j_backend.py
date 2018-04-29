@@ -2,11 +2,20 @@ from keras.backend.common import floatx, epsilon
 from keras.backend.common import image_data_format
 
 from ..java_classes import SameDiff, Nd4j
-from ..ndarray import array, get_context_dtype
+from ..ndarray import array, get_context_dtype, set_context_dtype
 from ..matlib import zeros as nd4j_zeros
 from ..matlib import ones as nd4j_ones
 
+
 from .samediff import SDVariableWrapper, op
+
+from collections import defaultdict
+
+
+import numpy as np   # TODO : remove
+
+
+#set_context_dtype('float')
 
 
 sd = SameDiff.create()
@@ -27,6 +36,25 @@ def get_opname(op):
             return opname
         i += 1
 
+uids = defaultdict(lambda *_: 0)
+def get_uid(prefix=''):
+    uid = uids[prefix]
+    uids[prefix] += 1
+    return uid
+
+
+# TODO
+class name_scope(object):
+
+    def __init__(self, name):
+        self.name = name
+
+    def __enter__(self, *args, **kwargs):
+        pass
+    def __exit__(self, *args, **kwargs):
+        pass
+
+
 
 def placeholder(shape=None, ndim=None, dtype=None, sparse=False, name=None):
     if shape is None:
@@ -40,12 +68,33 @@ def placeholder(shape=None, ndim=None, dtype=None, sparse=False, name=None):
     ph._uses_learning_phase = False
     return ph
 
+def random_uniform(shape, minval=0.0, maxval=1.0, dtype=None, seed=None):
+    """Returns a tensor with uniform distribution of values.
+
+    # Arguments
+        shape: A tuple of integers, the shape of tensor to create.
+        minval: A float, lower boundary of the uniform distribution
+            to draw samples.
+        maxval: A float, upper boundary of the uniform distribution
+            to draw samples.
+        dtype: String, dtype of returned tensor.
+        seed: Integer, random seed.
+
+    # Returns
+        A tensor.
+    """
+    if seed is None:
+        seed = np.random.randint(10e6)
+    return variable(np.random.uniform(minval, maxval, shape))
+
 
 def is_placeholder(x):
     return getattr(x, 'placeholder', False)
 
 
 def variable(value, dtype=None, name=None, constraint=None):
+    if type(value) is SDVariableWrapper:
+        return value
     value = array(value).array  # INDArray
     var = SDVariableWrapper(sd.var(get_opname("variable"), value))
     var._keras_shape = var.shape
@@ -54,7 +103,13 @@ def variable(value, dtype=None, name=None, constraint=None):
 
 
 def constant(value, dtype=None, shape=None, name=None):
-    return variable(value)
+    if type(value) in (int, float):
+        if shape is None:
+            shape = []
+        c = nd4j_zeros(shape)
+        c += value
+        return variable(c)
+    raise NotImplemented
 
 
 def is_keras_tensor(x):
