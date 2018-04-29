@@ -12,8 +12,9 @@ def _is_sdvar(x):
 def _is_jumpy(x):
 	return type(x).__name__ == 'SDVariableWrapper'
 
+
 def op(f):
-	def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs):
         args = list(args)
         for i, a in enumerate(args):
             if _is_jumpy(a):
@@ -26,13 +27,11 @@ def op(f):
         ot = type(out)
         if _is_sdvar(out):
             return SDVariableWrapper(out)
-        elif ot is tuple:
-            return (SDVariableWrapper(o) if _is_sdvar(o) for o in out)
-        elif ot is list:
-            return [SDVariableWrapper(o) if _is_sdvar(o) for o in out]
+        elif ot in (tuple, list):
+            return ot([SDVariableWrapper(o) if _is_sdvar(o) else o for o in out])
         else:
             return out
-	return wrapper
+    return wrapper
 
 class SDVariableWrapper(object):
     def __init__(self, var):
