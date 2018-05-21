@@ -1,3 +1,8 @@
+# IMPORTANT: THIS REPOSITORY HAS BEEN ARCHIVED AND JUMPY HAS BEEN MOVED
+Jumpy has been migrated to a sub-module of the mono-repository here: https://github.com/deeplearning4j/deeplearning4j
+All future development will continue at that repository, which should be used for all issues and pull requests.
+
+
 Jumpy: Python interface for [nd4j](https://nd4j.org)
 ===========================================
 
